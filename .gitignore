@@ -8,6 +8,8 @@ clickhouse
 selenium
 redash
 venv
+grafana-data
+grafana
 
 # C extensions
 *.so

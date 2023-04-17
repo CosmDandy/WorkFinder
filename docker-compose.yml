@@ -2,61 +2,42 @@ version: '3'
 services:
   selenium:
     container_name: selenium
-    image: selenium/standalone-chrome:latest
+    image: seleniarm/standalone-chromium:latest
     ports:
       - "4444:4444"
     volumes:
       - ./selenium:/selenium
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 2G
     networks:
       - selenium_net
   app:
+    container_name: app
     build: app/
     volumes:
       - ./app:/app
     ports:
-      - "3000:3000"
+      - "3030:3030"
     depends_on:
       - selenium
-      - clickhouse-client
+      - ch-client
     networks:
       - selenium_net
       - clickhouse_net
     command: python3 main.py
-  redash:
-    container_name: redash
-    image: redash/redash:latest
-    environment:
-      REDASH_DATABASE_URL: "clickhouse://clickhouse-server:8123"
-      REDASH_COOKIE_SECRET: "mycookie"
-      REDASH_ENFORCE_HTTPS: "false"
-      REDASH_SECRET_KEY: "mysecretkey"
-      REDASH_MAIL_SERVER: "smtp.gmail.com"
-      REDASH_MAIL_PORT: "587"
-      REDASH_MAIL_USE_TLS: "true"
-      REDASH_MAIL_USERNAME: "admin"
-      REDASH_MAIL_PASSWORD: "admin"
-      REDASH_MAIL_DEFAULT_SENDER: "admin@admin.com"
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
     ports:
-      - "5555:5555"
+      - '3000:3000'
+    restart: unless-stopped
     volumes:
-      - ./redash/data:/app/data
-      - ./redash/logs:/app/logs
-      - ./redash/plugins:/app/plugins
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana-data:/var/lib/grafana
     depends_on:
-      - clickhouse-server
+      - ch-server
     networks:
       - clickhouse_net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 2G
-  clickhouse-server:
+  ch-server:
+    container_name: ch-server
     image: yandex/clickhouse-server:latest
     ports:
       - "8123:8123"
@@ -64,12 +45,8 @@ services:
       - ./clickhouse/data:/var/lib/clickhouse
     networks:
       - clickhouse_net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.4'
-          memory: 2G
-  clickhouse-client:
+  ch-client:
+    container_name: ch-client
     image: yandex/clickhouse-client:latest
     entrypoint:
       - /bin/sleep
@@ -77,15 +54,12 @@ services:
       - infinity
     networks:
       - clickhouse_net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'
-          memory: 2G
     depends_on:
-      - clickhouse-server
+      - ch-server
 networks:
   clickhouse_net:
     driver: bridge
   selenium_net:
     driver: bridge
+volumes:
+  grafana-data:
