@@ -10,6 +10,7 @@ redash
 venv
 grafana-data
 grafana
+app/auth.py
 
 # C extensions
 *.so
