@@ -1,0 +1,91 @@
+version: '3'
+services:
+  selenium:
+    container_name: selenium
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
+    volumes:
+      - ./selenium:/selenium
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 2G
+    networks:
+      - selenium_net
+  app:
+    build: app/
+    volumes:
+      - ./app:/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - selenium
+      - clickhouse-client
+    networks:
+      - selenium_net
+      - clickhouse_net
+    command: python3 main.py
+  redash:
+    container_name: redash
+    image: redash/redash:latest
+    environment:
+      REDASH_DATABASE_URL: "clickhouse://clickhouse-server:8123"
+      REDASH_COOKIE_SECRET: "mycookie"
+      REDASH_ENFORCE_HTTPS: "false"
+      REDASH_SECRET_KEY: "mysecretkey"
+      REDASH_MAIL_SERVER: "smtp.gmail.com"
+      REDASH_MAIL_PORT: "587"
+      REDASH_MAIL_USE_TLS: "true"
+      REDASH_MAIL_USERNAME: "admin"
+      REDASH_MAIL_PASSWORD: "admin"
+      REDASH_MAIL_DEFAULT_SENDER: "admin@admin.com"
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./redash/data:/app/data
+      - ./redash/logs:/app/logs
+      - ./redash/plugins:/app/plugins
+    depends_on:
+      - clickhouse-server
+    networks:
+      - clickhouse_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 2G
+  clickhouse-server:
+    image: yandex/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./clickhouse/data:/var/lib/clickhouse
+    networks:
+      - clickhouse_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 2G
+  clickhouse-client:
+    image: yandex/clickhouse-client:latest
+    entrypoint:
+      - /bin/sleep
+    command:
+      - infinity
+    networks:
+      - clickhouse_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 2G
+    depends_on:
+      - clickhouse-server
+networks:
+  clickhouse_net:
+    driver: bridge
+  selenium_net:
+    driver: bridge

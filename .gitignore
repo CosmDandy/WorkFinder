@@ -2,6 +2,12 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
+.idea
+clickhouse
+selenium
+redash
+venv
 
 # C extensions
 *.so
